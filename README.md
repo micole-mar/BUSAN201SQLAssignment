@@ -21,3 +21,6 @@ will save you time and progress toward a solution, e.g. reading the database dia
 
 o The answers require you to know when and how to correctly use scalar functions, WHERE
 clauses, JOINs, aggregate functions, HAVING clauses, CASE statements and subqueries.
+
+
+The AWLT database for the SQL assignment (both “c20ad4d76f-AWLT.mdf” and “c20ad4d76f-AWLT.bak” files available). You should attach or restore the AWLT database provided to SSMS.
