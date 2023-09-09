@@ -243,25 +243,29 @@ WHERE (p.Weight IS NOT NULL AND soh.ShipMethod = ‘Unknown’)
 For all orders placed in 2017, calculate the revenue received for each product-colour (according to the Color column). Revenue is determined by using the product unit prices in the order, and it includes any applied discounts. Treat unknown (NULL) and "No Colour" as the same colour; treat "Multi" as its own colour. Sort your result by revenue descendingly.
 Enter into Canvas the sum of the revenue amounts in rows 5 to 7 (inclusive), rounded and padded to 2dp. */
 
-SELECT
-	CASE
-		WHEN p.Color IS NULL THEN ‘Unknown’
-		WHEN p.Color = ‘No Colour’ THEN ‘Unknown’
-		ELSE p.Color
-	END,
-	SUM(sod.OrderQty * sod.UnitPrice * (1 - sod.UnitPriceDiscount)) AS Revenue
-FROM SalesLT.SalesOrderHeader soh
-	JOIN SalesLT.SalesOrderDetail sod
-	ON soh.SalesOrderID = sod.SalesOrderID
-	JOIN SalesLT.Product p
-	ON sod.Product = p.ProductID
-WHERE YEAR(OrderDate) = 2017
-GROUP BY CASE
-WHEN p.Color IS NULL THEN ‘Unknown’
-		WHEN p.Color = ‘No Colour’ THEN ‘Unknown’
-		ELSE p.Color
-	END
-ORDER BY Revenue DESC
+SELECT ROUND(SUM(Revenue), 2) AS SumOfRevenue
+FROM (
+    SELECT
+        CASE
+            WHEN p.Color IS NULL THEN ‘Unknown’
+            WHEN p.Color = ‘No Colour’ THEN ‘Unknown’
+            ELSE p.Color
+        END,
+        SUM(sod.OrderQty * sod.UnitPrice * (1 - sod.UnitPriceDiscount)) AS Revenue
+    FROM SalesLT.SalesOrderHeader soh
+        JOIN SalesLT.SalesOrderDetail sod
+        ON soh.SalesOrderID = sod.SalesOrderID
+        JOIN SalesLT.Product p
+        ON sod.Product = p.ProductID
+    WHERE YEAR(OrderDate) = 2017
+    GROUP BY CASE
+    WHEN p.Color IS NULL THEN ‘Unknown’
+            WHEN p.Color = ‘No Colour’ THEN ‘Unknown’
+            ELSE p.Color
+        END
+    ORDER BY Revenue DESC
+    OFFSET 4 ROWS FETCH NEXT 3 ROWS ONLY  -- This limits the results to rows 5 to 7
+) AS Subquery;
 
 -- 633157.85
 
@@ -296,12 +300,16 @@ List all customers who have ordered less than $79,589.616 worth of products acro
 Use an order header's SubTotal to determine a customer's order amount. Treat SubTotal as including discounts.
 Enter into Canvas the number of customers in the list found above. */
 
-SELECT c.CustomerID, SUM(soh.SubTotal) AS SubTotal
-FROM SalesLT.SalesOrderHeader soh
-	RIGHT JOIN SalesLT.Customer c
-	ON soh.CustomerID = c.CustomerID
-GROUP BY c.CustomerID
-HAVING SUM(soh.SubTotal) < 79589.616 OR SUM (soh.SubTotal) IS NULL
+SELECT COUNT(*) AS RowCount
+FROM (
+    SELECT c.CustomerID, SUM(soh.SubTotal) AS SubTotal
+    FROM SalesLT.SalesOrderHeader soh
+           RIGHT JOIN SalesLT.Customer c
+                      ON soh.CustomerID = c.CustomerID
+    GROUP BY c.CustomerID
+    HAVING SUM(soh.SubTotal) < 79589.616
+      OR SUM(soh.SubTotal) IS NULL
+) AS Subquery;
 
 -- answer: 823
 
@@ -327,7 +335,7 @@ GROUP BY p.ProductID, sod.OrderQty, soh.SalesOrderID
 For each sales order, compute the cost of freight per unit (across all its products). Sort your result by the computed cost descendingly.
 Enter into Canvas the cost found above for the order in row 52, padded and rounded to 2dp. */
 
-SELECT NewTable.SalesOrderID, TotalQty, Freight/TotalQty AS FrightPerUnit
+SELECT NewTable.SalesOrderID, ROUND(soh.Freight / TotalQty, 2) AS FreightPerUnit
 FROM (
 	SELECT SalesOrderID, SUM(OrderQty) AS TotalQty
 	FROM SalesLT.SalesOrderDetail
@@ -343,18 +351,21 @@ Find how many units of each product have been ordered as at 11:59:59pm, 31st Jan
 Dates are provided in the SellStartDate, SellEndDate, and DiscontinuedDate columns.
 From the resulting list, enter into Canvas how many unique ProductNumbers have exceeded 43 units. */
 
-SELECT sod.ProductID, SUM(sod.OrderQty) AS OrderQty
-FROM SalesLT.Product p
-	JOIN SalesLT.SalesOrderDetail sod
-	ON p.Product = sod.ProductID
-	JOIN sod.SalesOrderID = soh.SalesOrderID
-	ON sod.SalesOrderID = soh.SalesOrderID
-WHERE soh,OrderDate <= ‘2017-01-31 11:59:59’
-	AND (p.SellEndDate IS NULL OR p.SellEndDate > ‘2017-01-31’)
-	AND (p.DiscontinuedDate IS NULL OR p.DiscontinuedDate > ‘2017-01-31’)
-	AND (p.SellStartDate < ‘2017-01-31’)
-GROUP BY sod.ProductID
-HAVING SUM(sod.OrderQty) > 43
+SELECT COUNT(*) AS NumberOfRows
+FROM (
+    SELECT sod.ProductID, SUM(sod.OrderQty) AS OrderQty
+    FROM SalesLT.Product p
+        JOIN SalesLT.SalesOrderDetail sod
+        ON p.Product = sod.ProductID
+        JOIN sod.SalesOrderID = soh.SalesOrderID
+        ON sod.SalesOrderID = soh.SalesOrderID
+    WHERE soh,OrderDate <= ‘2017-01-31 11:59:59’
+        AND (p.SellEndDate IS NULL OR p.SellEndDate > ‘2017-01-31’)
+        AND (p.DiscontinuedDate IS NULL OR p.DiscontinuedDate > ‘2017-01-31’)
+        AND (p.SellStartDate < ‘2017-01-31’)
+    GROUP BY sod.ProductID
+    HAVING SUM(sod.OrderQty) > 43
+) AS SubqueryAlias;
 
 -- answer: 13
 
